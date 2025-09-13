@@ -92,6 +92,11 @@
            <input id="topK" type="text" value="1" />
            <div class="hint">For max consistency, use <span class="kbd">1</span>. Limits selection to the single most likely token.</div>
          </div>
+         <div>
+           <label>Timeout (ms)</label>
+           <input id="timeoutMs" type="text" value="15000" />
+           <div class="hint">Request will be cancelled and retried if it exceeds this duration.</div>
+         </div>
        </div>
         <div style="margin-top:10px;">
           <div class="row">
@@ -195,6 +200,7 @@ Respond in a JSON object with one key: "capital".</textarea>
   const temperatureEl = el('temperature');
   const topKEl = el('topK');
   const templateSelectorEl = el('templateSelector');
+  const timeoutMsEl = el('timeoutMs');
 
   let cancelFlag = false;
   let lastResults = [];
@@ -356,6 +362,10 @@ Respond in a JSON object with one key: "capital".</textarea>
     let lastError = null;
 
     for (let i = 0; i < MAX_RETRIES; i++) {
+      const controller = new AbortController();
+      const timeoutMs = parseInt(timeoutMsEl.value, 10) || 15000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
         const contents = [{
@@ -374,8 +384,14 @@ Respond in a JSON object with one key: "capital".</textarea>
         const body = { contents, generationConfig };
 
         const t0 = performance.now();
-        const res = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+        const res = await fetch(url, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
         const t1 = performance.now();
+        clearTimeout(timeoutId);
 
         if (res.ok) {
           const json = await res.json();
@@ -385,19 +401,22 @@ Respond in a JSON object with one key: "capital".</textarea>
           return { text, latency: Math.round(t1 - t0), raw: json };
         }
 
-        // Handle retryable errors
         if (res.status === 503 || res.status === 429) {
           lastError = new Error(`HTTP ${res.status} (will retry)`);
-          await sleep(RETRY_DELAY_MS * (i + 1)); // Exponential backoff
+          await sleep(RETRY_DELAY_MS * (i + 1));
           continue;
         }
 
-        // Handle non-retryable errors
         const errText = await res.text().catch(()=> '');
         throw new Error(`HTTP ${res.status} ${res.statusText} — ${errText}`);
 
       } catch (err) {
-        lastError = err;
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          lastError = new Error(`Request timed out at ${timeoutMs}ms (will retry)`);
+        } else {
+          lastError = err;
+        }
         await sleep(RETRY_DELAY_MS * (i + 1));
       }
     }
