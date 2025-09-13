@@ -14,8 +14,10 @@
     .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
     @media (max-width: 800px){ .grid { grid-template-columns: 1fr; } }
     .card { border:1px solid var(--border); border-radius:14px; padding:14px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+    h2.card-title { font-size: 14px; font-weight: 700; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
     label { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin-bottom:6px; }
     input[type="text"], textarea, select { width:100%; border:1px solid var(--border); border-radius:10px; padding:10px 12px; font:inherit; outline:none; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
     textarea { min-height:120px; resize:vertical; }
     input[type="file"] { width:100%; }
     .row { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
@@ -50,71 +52,71 @@
   <div class="container">
     <div class="grid">
       <section class="card">
-        <div class="row">
+        <h2 class="card-title">Configuration</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+          
           <div>
             <label>Gemini API Key</label>
-            <input id="apiKey" type="text" placeholder="AIza... (stored locally during session)" autocomplete="off" />
-            <div class="hint">Your key is used in-browser only and not sent anywhere except Google APIs.</div>
+            <input id="apiKey" type="text" placeholder="AIza... (stored in IndexedDB)" autocomplete="off" />
+            <div class="hint">Your key is stored locally and never sent anywhere except to Google APIs.</div>
           </div>
-        </div>
-        <div class="row" style="margin-top:10px;">
+
           <div>
             <label>Model</label>
             <select id="model">
               <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
               <option value="gemini-2.5-flash">gemini-2.5-flash</option>
-              <option value="gemma-3-27b-it">gemma-3-27b-it</option>
             </select>
           </div>
+
           <div>
             <label>Runs (N)</label>
             <select id="runs">
-              <option>3</option>
-              <option>5</option>
-              <option selected>10</option>
-              <option>15</option>
-              <option>20</option>
+              <option>3</option> <option>5</option> <option selected>10</option> <option>15</option> <option>20</option>
             </select>
           </div>
+
           <div>
-            <label>Delay Between Calls (ms)</label>
+            <label>Delay (ms)</label>
             <input id="delayMs" type="text" value="250" />
           </div>
-        </div>
-        <div class="row" style="margin-top:10px;">
-         <div>
-           <label>Temperature</label>
-           <input id="temperature" type="text" value="0.0" />
-           <div class="hint">For max consistency, use <span class="kbd">0.0</span>. Higher values (e.g., 0.9) increase randomness.</div>
-         </div>
-         <div>
-           <label>Top-K</label>
-           <input id="topK" type="text" value="1" />
-           <div class="hint">For max consistency, use <span class="kbd">1</span>. Limits selection to the single most likely token.</div>
-         </div>
-         <div>
-           <label>Timeout (ms)</label>
-           <input id="timeoutMs" type="text" value="15000" />
-           <div class="hint">Request will be cancelled and retried if it exceeds this duration.</div>
-         </div>
-       </div>
-        <div style="margin-top:10px;">
-          <div class="row">
-            <div style="flex-grow: 2;">
-              <label>Prompt</label>
-            </div>
-            <div>
-              <label>Load Template</label>
-              <select id="templateSelector" style="padding-right: 30px;"></select>
-            </div>
+
+          <div>
+            <label>Timeout (ms)</label>
+            <input id="timeoutMs" type="text" value="15000" />
           </div>
-          <textarea id="prompt" placeholder="Describe the task here. Keep it deterministic for better consistency (e.g., avoid open-ended creativity).">You are a helpful assistant. A user wants to know the capital of France.
+        </div>
+
+        <h2 class="card-title" style="margin-top: 20px;">Generation Config</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label>Temperature: <span id="temperatureVal" class="mono">0.0</span></label>
+            <input id="temperature" type="range" min="0" max="1" step="0.05" value="0.0" />
+            <div class="hint">Controls randomness. <span class="kbd">0.0</span> for deterministic, <span class="kbd">1.0</span> for creative.</div>
+          </div>
+          <div>
+            <label>Top-K: <span id="topKVal" class="mono">1</span></label>
+            <input id="topK" type="range" min="1" max="50" step="1" value="1" />
+            <div class="hint">Limits token selection. <span class="kbd">1</span> for most likely, higher for more diversity.</div>
+          </div>
+        </div>
+
+        <h2 class="card-title" style="margin-top: 20px;">Task Definition</h2>
+        <div class="row">
+          <div style="flex-grow: 2;">
+            <label>Prompt</label>
+          </div>
+          <div>
+            <label>Load Template</label>
+            <select id="templateSelector" style="padding-right: 30px;"></select>
+          </div>
+        </div>
+        <textarea id="prompt" placeholder="Describe the task here. Keep it deterministic for better consistency (e.g., avoid open-ended creativity).">You are a helpful assistant. A user wants to know the capital of France.
 
 Respond in a JSON object with one key: "capital".</textarea>
-          <div class="hint">A clear, deterministic prompt is the most important factor for consistency.</div>
-         </div>
-         <div style="margin-top:10px;">
-           <label>Images (optional; multiple allowed)</label>
+        <div class="hint">A clear, deterministic prompt is the most important factor for consistency.</div>
+        <div style="margin-top:10px;">
+          <label>Images (optional; multiple allowed)</label>
           <input id="images" type="file" accept="image/*" multiple />
           <div class="hint">Images are sent as inline base64 data. Large files increase latency; prefer ≤ 2MB each.</div>
         </div>
@@ -201,6 +203,8 @@ Respond in a JSON object with one key: "capital".</textarea>
   const topKEl = el('topK');
   const templateSelectorEl = el('templateSelector');
   const timeoutMsEl = el('timeoutMs');
+  const temperatureVal = el('temperatureVal');
+  const topKVal = el('topKVal');
 
   let cancelFlag = false;
   let lastResults = [];
@@ -263,36 +267,40 @@ Respond in a JSON object with one key: "capital".</textarea>
     dbSet('gemini_api_key', apiKeyEl.value).catch(console.error);
   });
 
+  // --- UI Binders for Sliders ---
+  temperatureEl.addEventListener('input', () => temperatureVal.textContent = parseFloat(temperatureEl.value).toFixed(2));
+  topKEl.addEventListener('input', () => topKVal.textContent = topKEl.value);
+
   // --- Template Loading ---
- let templates = [];
- async function loadTemplates() {
-   try {
-     const res = await fetch('templates.json');
-     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-     templates = await res.json();
-     
-     templateSelectorEl.innerHTML = '<option value="">Select a template...</option>';
-     templates.forEach((t, i) => {
-       const opt = document.createElement('option');
-       opt.value = i;
-       opt.textContent = t.name;
-       templateSelectorEl.appendChild(opt);
-     });
-   } catch (e) {
-     console.error('Failed to load templates:', e);
-     templateSelectorEl.innerHTML = '<option value="">Error loading templates</option>';
-     templateSelectorEl.disabled = true;
-   }
- }
+  let templates = [];
+  async function loadTemplates() {
+    try {
+      const res = await fetch('templates.json');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      templates = await res.json();
+      
+      templateSelectorEl.innerHTML = '<option value="">Select a template...</option>';
+      templates.forEach((t, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = t.name;
+        templateSelectorEl.appendChild(opt);
+      });
+    } catch (e) {
+      console.error('Failed to load templates:', e);
+      templateSelectorEl.innerHTML = '<option value="">Error loading templates</option>';
+      templateSelectorEl.disabled = true;
+    }
+  }
 
- templateSelectorEl.addEventListener('change', () => {
-   const idx = parseInt(templateSelectorEl.value, 10);
-   if (!isNaN(idx) && templates[idx]) {
-     promptEl.value = templates[idx].prompt;
-   }
- });
+  templateSelectorEl.addEventListener('change', () => {
+    const idx = parseInt(templateSelectorEl.value, 10);
+    if (!isNaN(idx) && templates[idx]) {
+      promptEl.value = templates[idx].prompt;
+    }
+  });
 
- loadTemplates();
+  loadTemplates();
 
    // Helpers
    const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -384,11 +392,11 @@ Respond in a JSON object with one key: "capital".</textarea>
         const body = { contents, generationConfig };
 
         const t0 = performance.now();
-        const res = await fetch(url, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
+        const res = await fetch(url, { 
+          method:'POST', 
+          headers:{ 'Content-Type':'application/json' }, 
           body: JSON.stringify(body),
-          signal: controller.signal
+          signal: controller.signal 
         });
         const t1 = performance.now();
         clearTimeout(timeoutId);
