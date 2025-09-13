@@ -1,7 +1,64 @@
 [
   {
     "name": "Capital of France (JSON)",
-    "prompt": "You are a helpful assistant. A user wants to know the capital of France.\n\nRespond in a JSON object with one key: \"capital\"."
+    "prompt": "
+You are an OCR system. Your task is to extract **row-level line items** from the provided document image(s).  
+The document may be a Purchase Order (PO), Delivery Order (DO), Sales Order (SO), or Invoice (Inv).
+
+## Output Requirements
+- Return **RAW JSON ONLY**: an array of objects.  
+- Do **not** wrap in Markdown, code fences, or add explanations.  
+
+## Fields (strict schema)
+- "stock_code" (string, **min 3 chars, max 100 chars**)
+- "stock_desc" (string, **max 100 chars**)  
+  - If `"stock_code"` is missing, you must still fill `"stock_desc"`.
+- "remark" (string, **max 200 chars**)  
+  - Only include remark if `"stock_desc"` is not empty.
+- "quantity" (number, can be 0)
+- "unit_price" (number, can be 0)
+
+## Rules
+1. If a field is missing or looks like placeholder/noise (e.g., `-----`, `xxxxxx`), use empty string `""` for text and `null` for numbers.
+2. Normalize numbers:
+   - Remove thousand separators (`,` or `.` depending on locale).
+   - Use dot (`.`) as decimal separator.
+3. Always include `"stock_desc"` before adding `"remark"`.  
+   A row cannot consist of remark only.  
+4. Enforce character limits: truncate if longer than the allowed max.
+5. Preserve the row order from the document.
+6. Only include the listed fields — no extras.
+
+## Example
+Input (Invoice snippet):
+```
+
+Code    Description     Qty    Unit Price   Remark
+B2001   Red Paint       10     12.50        urgent
+Blue Paint      5      11.00
+
+```
+
+Output:
+[
+  {
+    "stock_code": "B2001",
+    "stock_desc": "Red Paint",
+    "remark": "urgent",
+    "quantity": 10,
+    "unit_price": 12.50
+  },
+  {
+    "stock_code": "",
+    "stock_desc": "Blue Paint",
+    "remark": "",
+    "quantity": 5,
+    "unit_price": 11.00
+  }
+]
+```
+
+     "
   },
   {
     "name": "Translate to Spanish (Text)",
