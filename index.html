@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gemini Consistency Tester — Vanilla JS</title>
+  <style>
+    :root { --fg:#111; --bg:#fff; --muted:#6b7280; --border:#e5e7eb; --accent:#2563eb; --ok:#16a34a; --warn:#d97706; --err:#dc2626; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; color:var(--fg); background:var(--bg); }
+    header { padding:16px; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(255,255,255,.9); backdrop-filter:saturate(180%) blur(6px); }
+    header h1 { margin:0; font-size:18px; font-weight:700; }
+    .container { max-width:1000px; margin:0 auto; padding:16px; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    @media (max-width: 800px){ .grid { grid-template-columns: 1fr; } }
+    .card { border:1px solid var(--border); border-radius:14px; padding:14px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+    label { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin-bottom:6px; }
+    input[type="text"], textarea, select { width:100%; border:1px solid var(--border); border-radius:10px; padding:10px 12px; font:inherit; outline:none; }
+    textarea { min-height:120px; resize:vertical; }
+    input[type="file"] { width:100%; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
+    .row > * { flex:1; min-width: 180px; }
+    .btn { appearance:none; border:1px solid var(--border); padding:10px 14px; border-radius:999px; background:#fff; cursor:pointer; font-weight:600; }
+    .btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn.ghost { background:#fff; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    .muted { color:var(--muted); }
+    .thin { font-weight:500; }
+    .progress-wrap { height:10px; background:#f5f7fb; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+    .progress { height:100%; width:0%; background:linear-gradient(90deg, var(--accent), #4f46e5); transition:width .25s ease; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--border); vertical-align: top; }
+    th { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid var(--border); }
+    .badge.ok{ color:var(--ok); border-color:rgba(22,163,74,.25); background:rgba(22,163,74,.06); }
+    .badge.err{ color:var(--err); border-color:rgba(220,38,38,.25); background:rgba(220,38,38,.06); }
+    .badge.warn{ color:var(--warn); border-color:rgba(217,119,6,.25); background:rgba(217,119,6,.06); }
+    .pill { font-variant-numeric: tabular-nums; font-weight:700; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    details summary { cursor:pointer; user-select:none; }
+    .footer { margin-top: 8px; font-size: 12px; color: var(--muted); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .kbd { padding: 2px 6px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 6px; background: #f9fafb; font-family: ui-monospace, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gemini Consistency Tester <span class="muted thin">· Vanilla HTML/CSS/JS</span></h1>
+  </header>
+  <div class="container">
+    <div class="grid">
+      <section class="card">
+        <div class="row">
+          <div>
+            <label>Gemini API Key</label>
+            <input id="apiKey" type="text" placeholder="AIza... (stored locally during session)" autocomplete="off" />
+            <div class="hint">Your key is used in-browser only and not sent anywhere except Google APIs.</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label>Model</label>
+            <select id="model">
+              <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+              <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+            </select>
+          </div>
+          <div>
+            <label>Runs (N)</label>
+            <select id="runs">
+              <option>3</option>
+              <option>5</option>
+              <option selected>10</option>
+              <option>15</option>
+              <option>20</option>
+            </select>
+          </div>
+          <div>
+            <label>Delay Between Calls (ms)</label>
+            <input id="delayMs" type="text" value="250" />
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <label>Prompt</label>
+          <textarea id="prompt" placeholder="Describe the task here. Keep it deterministic for better consistency (e.g., avoid open-ended creativity)."></textarea>
+        </div>
+        <div style="margin-top:10px;">
+          <label>Images (optional; multiple allowed)</label>
+          <input id="images" type="file" accept="image/*" multiple />
+          <div class="hint">Images are sent as inline base64 data. Large files increase latency; prefer ≤ 2MB each.</div>
+        </div>
+        <div class="row" style="margin-top:14px;">
+          <button class="btn primary" id="runBtn">Run Consistency Test</button>
+          <button class="btn ghost" id="cancelBtn" disabled>Cancel</button>
+          <button class="btn ghost" id="exportBtn" disabled>Export JSON</button>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="progress-wrap"><div class="progress" id="progressBar"></div></div>
+          <div class="hint"><span id="statusText">Idle.</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row">
+          <div>
+            <label>Consistency Rate (Exact Match)</label>
+            <div id="rateExact" class="pill" style="font-size:28px;">–</div>
+            <div class="hint">(Most common normalized response ÷ N)</div>
+          </div>
+          <div>
+            <label>Similarity vs. Majority (Token Jaccard)</label>
+            <div id="rateJaccard" class="pill" style="font-size:28px;">–</div>
+            <div class="hint">(Average word-set overlap vs. the majority response)</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <label>Majority Response (normalized)</label>
+          <pre id="majorityText" class="mono" style="white-space: pre-wrap; word-break: break-word; border:1px solid var(--border); border-radius:10px; padding:10px; max-height:220px; overflow:auto;">–</pre>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px;">
+      <div class="row" style="align-items: baseline;">
+        <h3 style="margin:0; font-size:16px;">Runs</h3>
+        <span class="muted">Each request is sent sequentially with the same prompt & images.</span>
+      </div>
+      <div style="margin-top:10px; overflow:auto;">
+        <table id="resultsTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Status</th>
+              <th>Latency (ms)</th>
+              <th>Output (truncated)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="footer">Tip: To encourage consistency, keep prompts specific, avoid randomness, and include constraints (e.g., "Reply with a single JSON object with fixed keys.")</div>
+    </section>
+
+    <details class="card" style="margin-top:16px;">
+      <summary>How the consistency scores are computed</summary>
+      <ol>
+        <li><b>Exact Match:</b> Normalize each response (lowercase, trim, collapse whitespace). Find the most frequent string. Consistency = frequency_of_mode ÷ N.</li>
+        <li><b>Token Jaccard:</b> Tokenize responses into lowercased word sets. Take the majority response (mode) and compute Jaccard similarity <span class="mono">|A∩B| / |A∪B|</span> with every other response, then average.</li>
+      </ol>
+    </details>
+  </div>
+
+<script>
+(function(){
+  const el = id => document.getElementById(id);
+  const apiKeyEl = el('apiKey');
+  const modelEl = el('model');
+  const runsEl = el('runs');
+  const promptEl = el('prompt');
+  const imagesEl = el('images');
+  const runBtn = el('runBtn');
+  const cancelBtn = el('cancelBtn');
+  const exportBtn = el('exportBtn');
+  const statusText = el('statusText');
+  const progressBar = el('progressBar');
+  const rateExact = el('rateExact');
+  const rateJaccard = el('rateJaccard');
+  const majorityText = el('majorityText');
+  const resultsTableBody = document.querySelector('#resultsTable tbody');
+  const delayMsEl = el('delayMs');
+
+  let cancelFlag = false;
+  let lastResults = [];
+
+  // Load API key from localStorage on startup
+  apiKeyEl.value = localStorage.getItem('gemini_api_key') || '';
+
+  // Save API key to localStorage whenever it changes
+  apiKeyEl.addEventListener('input', () => {
+    localStorage.setItem('gemini_api_key', apiKeyEl.value);
+  });
+ 
+   // Helpers
+   const sleep = ms => new Promise(r => setTimeout(r, ms));
+ 
+  function normalizeText(s){
+    if(typeof s !== 'string') return '';
+    return s.toLowerCase().replace(/\s+/g,' ').trim();
+  }
+
+  function truncate(s, len=220){
+    if(!s) return '';
+    return s.length>len? s.slice(0,len) + '…' : s;
+  }
+
+  function jaccard(a, b){
+    const setA = new Set(a.toLowerCase().match(/\w+/g) || []);
+    const setB = new Set(b.toLowerCase().match(/\w+/g) || []);
+    const inter = new Set([...setA].filter(x => setB.has(x)));
+    const union = new Set([...setA, ...setB]);
+    return union.size === 0 ? 1 : inter.size / union.size;
+  }
+
+  function majority(strings){
+    const map = new Map();
+    for(const s of strings){
+      map.set(s, (map.get(s)||0)+1);
+    }
+    let best = '', bestCount = 0;
+    for(const [s,c] of map){ if(c>bestCount){ best=s; bestCount=c; } }
+    return {value: best, count: bestCount};
+  }
+
+  function renderRow(idx, status, latency, text){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono">${idx}</td>
+      <td>${status}</td>
+      <td class="mono">${latency ?? '–'}</td>
+      <td class="mono">${truncate(text || '')}</td>
+    `;
+    resultsTableBody.appendChild(tr);
+    tr.scrollIntoView({block:'nearest'});
+  }
+
+  async function filesToInlineParts(fileList){
+    const files = Array.from(fileList || []);
+    const parts = [];
+    for(const f of files){
+      const b64 = await fileToBase64(f);
+      parts.push({ inline_data: { mime_type: f.type || 'application/octet-stream', data: b64 } });
+    }
+    return parts;
+  }
+
+  function fileToBase64(file){
+    return new Promise((resolve, reject)=>{
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result.split(',')[1]);
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+  }
+
+  async function callGemini({apiKey, model, prompt, imageParts}){
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const contents = [{
+      role: 'user',
+      parts: [ { text: prompt }, ...(imageParts || []) ]
+    }];
+
+    const body = { contents, generationConfig: { temperature: 0 } };
+
+    const t0 = performance.now();
+    const res = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+    const t1 = performance.now();
+
+    if(!res.ok){
+      const errText = await res.text().catch(()=> '');
+      throw new Error(`HTTP ${res.status} ${res.statusText} — ${errText}`);
+    }
+
+    const json = await res.json();
+    // Extract text (Gemini responses can be multiple parts/candidates)
+    const text = json?.candidates?.[0]?.content?.parts?.map(p=> p.text || '').join('') ||
+                 json?.candidates?.[0]?.content?.parts?.[0]?.text ||
+                 JSON.stringify(json);
+    return { text, latency: Math.round(t1 - t0), raw: json };
+  }
+
+  function computeMetrics(texts){
+    const norm = texts.map(normalizeText);
+    const {value: mode, count} = majority(norm);
+    const exactRate = texts.length ? (count / texts.length) : 0;
+    const sims = norm.map(s => jaccard(mode, s));
+    const avgJ = sims.length ? sims.reduce((a,b)=>a+b,0)/sims.length : 0;
+    return { exactRate, avgJaccard: avgJ, majorityNormalized: mode };
+  }
+
+  function updateProgress(done, total){
+    const pct = total ? Math.round((done/total)*100) : 0;
+    progressBar.style.width = pct + '%';
+    statusText.textContent = `Progress: ${done}/${total} (${pct}%)`;
+  }
+
+  async function runTest(){
+    cancelFlag = false;
+    lastResults = [];
+    resultsTableBody.innerHTML = '';
+    progressBar.style.width = '0%';
+    rateExact.textContent = '–';
+    rateJaccard.textContent = '–';
+    majorityText.textContent = '–';
+
+    const apiKey = apiKeyEl.value.trim();
+    const model = modelEl.value;
+    const N = parseInt(runsEl.value, 10) || 5;
+    const delayMs = Math.max(0, parseInt(delayMsEl.value, 10) || 0);
+    const prompt = promptEl.value.trim();
+
+    if(!apiKey){ alert('Please enter your Gemini API key.'); return; }
+    if(!prompt){ alert('Please enter a prompt.'); return; }
+
+    runBtn.disabled = true; cancelBtn.disabled = false; exportBtn.disabled = true;
+    statusText.textContent = 'Preparing images…';
+
+    let imageParts = [];
+    try { imageParts = await filesToInlineParts(imagesEl.files); }
+    catch(e){ console.error(e); alert('Failed to read images: ' + e.message); runBtn.disabled=false; cancelBtn.disabled=true; return; }
+
+    statusText.textContent = 'Running…';
+
+    for(let i=1;i<=N;i++){
+      if(cancelFlag){ renderRow(i, '<span class="badge warn">cancelled</span>', null, '—'); break; }
+      try{
+        const { text, latency } = await callGemini({ apiKey, model, prompt, imageParts });
+        lastResults.push({ index:i, ok:true, latency, text });
+        renderRow(i, '<span class="badge ok">ok</span>', latency, text);
+      }catch(err){
+        lastResults.push({ index:i, ok:false, latency:null, error:String(err) });
+        renderRow(i, '<span class="badge err">error</span>', '–', String(err));
+      }
+      updateProgress(i, N);
+      if(i < N && delayMs>0){ await sleep(delayMs); }
+    }
+
+    // Compute metrics on successful texts only
+    const texts = lastResults.filter(r=>r.ok).map(r=>r.text);
+    const { exactRate, avgJaccard, majorityNormalized } = computeMetrics(texts);
+
+    rateExact.textContent = texts.length? (exactRate*100).toFixed(1) + '%': '–';
+    rateJaccard.textContent = texts.length? (avgJaccard*100).toFixed(1) + '%': '–';
+    majorityText.textContent = texts.length? majorityNormalized: '–';
+
+    statusText.textContent = `Done. Success ${texts.length}/${lastResults.length}.`;
+    runBtn.disabled = false; cancelBtn.disabled = true; exportBtn.disabled = lastResults.length === 0;
+  }
+
+  runBtn.addEventListener('click', runTest);
+  cancelBtn.addEventListener('click', ()=>{ cancelFlag = true; cancelBtn.disabled = true; statusText.textContent = 'Cancelling…'; });
+  exportBtn.addEventListener('click', ()=>{
+    const out = {
+      meta: {
+        model: modelEl.value,
+        runs: parseInt(runsEl.value,10)||0,
+        timestamp: new Date().toISOString()
+      },
+      prompt: promptEl.value,
+      results: lastResults
+    };
+    const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'gemini-consistency-results.json';
+    a.click();
+    setTimeout(()=> URL.revokeObjectURL(url), 2500);
+  });
+})();
+</script>
+</body>
+</html>
