@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Capital of France (JSON)",
+    "prompt": "You are a helpful assistant. A user wants to know the capital of France.\n\nRespond in a JSON object with one key: \"capital\"."
+  },
+  {
+    "name": "Translate to Spanish (Text)",
+    "prompt": "Translate the following English text to Spanish:\n\n\"Hello, how are you?\""
+  },
+  {
+    "name": "Summarize Text (Paragraph)",
+    "prompt": "Summarize the following text in a single paragraph:\n\n\"The sun is a star at the center of the Solar System. It is a nearly perfect sphere of hot plasma, heated to incandescence by nuclear fusion reactions in its core, radiating the energy mainly as visible light and infrared radiation. It is by far the most important source of energy for life on Earth.\""
+  },
+  {
+    "name": "Code Generation (Python)",
+    "prompt": "Write a Python function that takes a list of numbers and returns the sum of all even numbers in the list."
+  }
+]

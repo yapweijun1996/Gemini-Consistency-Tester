@@ -93,11 +93,19 @@
          </div>
        </div>
         <div style="margin-top:10px;">
-          <label>Prompt</label>
+          <div class="row">
+            <div style="flex-grow: 2;">
+              <label>Prompt</label>
+            </div>
+            <div>
+              <label>Load Template</label>
+              <select id="templateSelector" style="padding-right: 30px;"></select>
+            </div>
+          </div>
           <textarea id="prompt" placeholder="Describe the task here. Keep it deterministic for better consistency (e.g., avoid open-ended creativity).">You are a helpful assistant. A user wants to know the capital of France.
 
 Respond in a JSON object with one key: "capital".</textarea>
-           <div class="hint">A clear, deterministic prompt is the most important factor for consistency.</div>
+          <div class="hint">A clear, deterministic prompt is the most important factor for consistency.</div>
          </div>
          <div style="margin-top:10px;">
            <label>Images (optional; multiple allowed)</label>
@@ -185,6 +193,7 @@ Respond in a JSON object with one key: "capital".</textarea>
   const delayMsEl = el('delayMs');
   const temperatureEl = el('temperature');
   const topKEl = el('topK');
+  const templateSelectorEl = el('templateSelector');
 
   let cancelFlag = false;
   let lastResults = [];
@@ -246,7 +255,38 @@ Respond in a JSON object with one key: "capital".</textarea>
   apiKeyEl.addEventListener('input', () => {
     dbSet('gemini_api_key', apiKeyEl.value).catch(console.error);
   });
- 
+
+  // --- Template Loading ---
+ let templates = [];
+ async function loadTemplates() {
+   try {
+     const res = await fetch('templates.json');
+     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+     templates = await res.json();
+     
+     templateSelectorEl.innerHTML = '<option value="">Select a template...</option>';
+     templates.forEach((t, i) => {
+       const opt = document.createElement('option');
+       opt.value = i;
+       opt.textContent = t.name;
+       templateSelectorEl.appendChild(opt);
+     });
+   } catch (e) {
+     console.error('Failed to load templates:', e);
+     templateSelectorEl.innerHTML = '<option value="">Error loading templates</option>';
+     templateSelectorEl.disabled = true;
+   }
+ }
+
+ templateSelectorEl.addEventListener('change', () => {
+   const idx = parseInt(templateSelectorEl.value, 10);
+   if (!isNaN(idx) && templates[idx]) {
+     promptEl.value = templates[idx].prompt;
+   }
+ });
+
+ loadTemplates();
+
    // Helpers
    const sleep = ms => new Promise(r => setTimeout(r, ms));
  
