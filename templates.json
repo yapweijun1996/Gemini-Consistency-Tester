@@ -1,64 +1,7 @@
 [
   {
     "name": "Capital of France (JSON)",
-    "prompt": "
-You are an OCR system. Your task is to extract **row-level line items** from the provided document image(s).  
-The document may be a Purchase Order (PO), Delivery Order (DO), Sales Order (SO), or Invoice (Inv).
-
-## Output Requirements
-- Return **RAW JSON ONLY**: an array of objects.  
-- Do **not** wrap in Markdown, code fences, or add explanations.  
-
-## Fields (strict schema)
-- "stock_code" (string, **min 3 chars, max 100 chars**)
-- "stock_desc" (string, **max 100 chars**)  
-  - If `"stock_code"` is missing, you must still fill `"stock_desc"`.
-- "remark" (string, **max 200 chars**)  
-  - Only include remark if `"stock_desc"` is not empty.
-- "quantity" (number, can be 0)
-- "unit_price" (number, can be 0)
-
-## Rules
-1. If a field is missing or looks like placeholder/noise (e.g., `-----`, `xxxxxx`), use empty string `""` for text and `null` for numbers.
-2. Normalize numbers:
-   - Remove thousand separators (`,` or `.` depending on locale).
-   - Use dot (`.`) as decimal separator.
-3. Always include `"stock_desc"` before adding `"remark"`.  
-   A row cannot consist of remark only.  
-4. Enforce character limits: truncate if longer than the allowed max.
-5. Preserve the row order from the document.
-6. Only include the listed fields — no extras.
-
-## Example
-Input (Invoice snippet):
-```
-
-Code    Description     Qty    Unit Price   Remark
-B2001   Red Paint       10     12.50        urgent
-Blue Paint      5      11.00
-
-```
-
-Output:
-[
-  {
-    "stock_code": "B2001",
-    "stock_desc": "Red Paint",
-    "remark": "urgent",
-    "quantity": 10,
-    "unit_price": 12.50
-  },
-  {
-    "stock_code": "",
-    "stock_desc": "Blue Paint",
-    "remark": "",
-    "quantity": 5,
-    "unit_price": 11.00
-  }
-]
-```
-
-     "
+    "prompt": "You are an OCR system. Your task is to extract **row-level line items** from the provided document image(s).  \nThe document may be a Purchase Order (PO), Delivery Order (DO), Sales Order (SO), or Invoice (Inv).\n\n## Output Requirements\n- Return **RAW JSON ONLY**: an array of objects.  \n- Do **not** wrap in Markdown, code fences, or add explanations.  \n\n## Fields (strict schema)\n- \"stock_code\" (string, **min 3 chars, max 100 chars**)\n- \"stock_desc\" (string, **max 100 chars**)  \n  - If `\"stock_code\"` is missing, you must still fill `\"stock_desc\"`.\n- \"remark\" (string, **max 200 chars**)  \n  - Only include remark if `\"stock_desc\"` is not empty.\n- \"quantity\" (number, can be 0)\n- \"unit_price\" (number, can be 0)\n\n## Rules\n1. If a field is missing or looks like placeholder/noise (e.g., `-----`, `xxxxxx`), use empty string `\"\"` for text and `null` for numbers.\n2. Normalize numbers:\n   - Remove thousand separators (`,` or `.` depending on locale).\n   - Use dot (`.`) as decimal separator.\n3. Always include `\"stock_desc\"` before adding `\"remark\"`.  \n   A row cannot consist of remark only.  \n4. Enforce character limits: truncate if longer than the allowed max.\n5. Preserve the row order from the document.\n6. Only include the listed fields — no extras.\n\n## Example\nInput (Invoice snippet):\n```\n\nCode    Description     Qty    Unit Price   Remark\nB2001   Red Paint       10     12.50        urgent\nBlue Paint      5      11.00\n\n```\n\nOutput:\n[\n  {\n    \"stock_code\": \"B2001\",\n    \"stock_desc\": \"Red Paint\",\n    \"remark\": \"urgent\",\n    \"quantity\": 10,\n    \"unit_price\": 12.50\n  },\n  {\n    \"stock_code\": \"\",\n    \"stock_desc\": \"Blue Paint\",\n    \"remark\": \"\",\n    \"quantity\": 5,\n    \"unit_price\": 11.00\n  }\n]\n```"
   },
   {
     "name": "Translate to Spanish (Text)",
