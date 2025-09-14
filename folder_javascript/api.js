@@ -31,6 +31,8 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
 
       const body = { contents, generationConfig };
 
+      console.log('Request body:', JSON.stringify(body, null, 2));
+
       const t0 = performance.now();
       const res = await fetch(url, {
         method: 'POST',
