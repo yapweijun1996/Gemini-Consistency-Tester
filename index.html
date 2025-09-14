@@ -45,11 +45,13 @@
     .kbd { padding: 2px 6px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 6px; background: #f9fafb; font-family: ui-monospace, monospace; font-size: 12px; }
    .output-link { cursor: pointer; text-decoration: underline; color: var(--accent); }
    .image-preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-   .img-preview { position: relative; }
-   .img-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+   .img-preview { position: relative; text-align: center; }
+   .img-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; }
+   .img-preview .info { font-size: 10px; color: var(--muted); margin-top: 4px; }
    .img-preview .delete-btn { position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; background: var(--err); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; }
    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
    .modal { background: #fff; padding: 20px; border-radius: 14px; max-width: 80vw; max-height: 80vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+   .modal-content img { max-width: 100%; max-height: 70vh; }
    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px; }
    .modal-header h3 { margin: 0; }
    .modal-close { cursor: pointer; border: none; background: none; font-size: 24px; font-weight: bold; }
@@ -194,10 +196,13 @@ Respond in a JSON object with one key: "capital".</textarea>
   <div class="modal-overlay" id="outputModalOverlay">
     <div class="modal">
       <div class="modal-header">
-        <h3>Full Output</h3>
+        <h3 id="modalTitle">Full Output</h3>
         <button class="modal-close" id="modalCloseBtn">&times;</button>
       </div>
-      <pre id="modalContent" class="mono" style="white-space: pre-wrap; word-break: break-word;"></pre>
+      <div class="modal-content" id="modalContent">
+        <pre class="mono" style="white-space: pre-wrap; word-break: break-word;"></pre>
+        <img src="" alt="Image Preview" style="display:none;" />
+      </div>
     </div>
   </div>
 
@@ -227,6 +232,7 @@ Respond in a JSON object with one key: "capital".</textarea>
   const topKVal = el('topKVal');
   const outputModalOverlay = el('outputModalOverlay');
   const modalContent = el('modalContent');
+  const modalTitle = el('modalTitle');
   const modalCloseBtn = el('modalCloseBtn');
   const imagePreviewContainer = el('imagePreviewContainer');
 
@@ -548,10 +554,23 @@ Respond in a JSON object with one key: "capital".</textarea>
   });
 
  // --- Modal Logic ---
- function showModal(fullText) {
-   modalContent.textContent = fullText;
-   outputModalOverlay.style.display = 'flex';
- }
+function showModal(content, type = 'text') {
+  const pre = modalContent.querySelector('pre');
+  const img = modalContent.querySelector('img');
+
+  if (type === 'text') {
+    modalTitle.textContent = 'Full Output';
+    pre.textContent = content;
+    pre.style.display = 'block';
+    img.style.display = 'none';
+  } else if (type === 'image') {
+    modalTitle.textContent = 'Image Preview';
+    img.src = content;
+    img.style.display = 'block';
+    pre.style.display = 'none';
+  }
+  outputModalOverlay.style.display = 'flex';
+}
 
  function hideModal() {
    outputModalOverlay.style.display = 'none';
@@ -560,7 +579,7 @@ Respond in a JSON object with one key: "capital".</textarea>
  resultsTableBody.addEventListener('click', (e) => {
    if (e.target.classList.contains('output-link')) {
      const fullText = decodeURIComponent(e.target.dataset.fullText);
-     showModal(fullText);
+     showModal(fullText, 'text');
    }
  });
 
@@ -572,6 +591,36 @@ Respond in a JSON object with one key: "capital".</textarea>
  });
 
 // --- Image Preview & Management ---
+const MAX_SIZE_KB = 100;
+
+function formatBytes(bytes) {
+ if (bytes === 0) return '0 KB';
+ const k = 1024;
+ const sizes = ['Bytes', 'KB', 'MB'];
+ const i = Math.floor(Math.log(bytes) / Math.log(k));
+ return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+async function compressImage(file) {
+ return new Promise((resolve, reject) => {
+   const img = new Image();
+   img.src = URL.createObjectURL(file);
+   img.onload = () => {
+     const canvas = document.createElement('canvas');
+     const ctx = canvas.getContext('2d');
+     canvas.width = img.width;
+     canvas.height = img.height;
+     ctx.drawImage(img, 0, 0);
+     canvas.toBlob(blob => {
+       if (!blob) return reject(new Error('Canvas to Blob failed'));
+       const compressedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
+       resolve(compressedFile);
+     }, 'image/jpeg', 0.8);
+   };
+   img.onerror = reject;
+ });
+}
+
 function renderPreviews() {
   imagePreviewContainer.innerHTML = '';
   uploadedFiles.forEach((file, index) => {
@@ -580,7 +629,8 @@ function renderPreviews() {
       const div = document.createElement('div');
       div.className = 'img-preview';
       div.innerHTML = `
-        <img src="${e.target.result}" alt="${file.name}" />
+        <img src="${e.target.result}" alt="${file.name}" data-index="${index}" class="preview-image-clickable" />
+        <div class="info">${formatBytes(file.size)} ${file.compressed ? '✓' : ''}</div>
         <button class="delete-btn" data-index="${index}">&times;</button>
       `;
       imagePreviewContainer.appendChild(div);
@@ -589,19 +639,42 @@ function renderPreviews() {
   });
 }
 
-imagesEl.addEventListener('change', (e) => {
+imagesEl.addEventListener('change', async (e) => {
   const newFiles = Array.from(e.target.files);
-  uploadedFiles.push(...newFiles);
+  for (let file of newFiles) {
+    if (file.size > MAX_SIZE_KB * 1024) {
+      try {
+        const compressedFile = await compressImage(file);
+        compressedFile.compressed = true; // Mark as compressed
+        uploadedFiles.push(compressedFile);
+      } catch (err) {
+        console.error("Compression failed:", err);
+        uploadedFiles.push(file); // Add original if compression fails
+      }
+    } else {
+      uploadedFiles.push(file);
+    }
+  }
   renderPreviews();
-  // Clear the input so the user can select the same file again if they delete it
   e.target.value = '';
 });
 
 imagePreviewContainer.addEventListener('click', (e) => {
-  if (e.target.classList.contains('delete-btn')) {
-    const index = parseInt(e.target.dataset.index, 10);
+  const target = e.target;
+  if (target.classList.contains('delete-btn')) {
+    const index = parseInt(target.dataset.index, 10);
     uploadedFiles.splice(index, 1);
     renderPreviews();
+  } else if (target.classList.contains('preview-image-clickable')) {
+    const index = parseInt(target.dataset.index, 10);
+    const file = uploadedFiles[index];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        showModal(event.target.result, 'image');
+      };
+      reader.readAsDataURL(file);
+    }
   }
 });
 
