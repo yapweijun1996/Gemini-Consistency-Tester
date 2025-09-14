@@ -53,7 +53,14 @@ async function handlePdfFile(file) {
 export async function processFiles(files, uploadedFiles, statusEl) {
   statusEl.textContent = 'Processing files...';
 
+  const MAX_FILES = 16;
+
   for (let file of files) {
+    if (uploadedFiles.length >= MAX_FILES) {
+      alert(`You can only upload a maximum of ${MAX_FILES} files.`);
+      break;
+    }
+
     let filesToAdd = [];
     if (file.type === 'application/pdf') {
       try {
