@@ -70,8 +70,12 @@ export async function processFiles(files, uploadedFiles, statusEl) {
       if (f.size > MAX_SIZE_KB * 1024) {
         try {
           const compressedFile = await compressImage(f);
-          compressedFile.compressed = true;
-          uploadedFiles.push(compressedFile);
+          if (compressedFile.size < f.size) {
+            compressedFile.compressed = true;
+            uploadedFiles.push(compressedFile);
+          } else {
+            uploadedFiles.push(f);
+          }
         } catch (err) {
           console.error("Compression failed:", err);
           uploadedFiles.push(f);
