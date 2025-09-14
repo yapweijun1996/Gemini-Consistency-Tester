@@ -2,7 +2,7 @@ import { formatBytes } from './utils.js';
 
 const MAX_SIZE_KB = 100;
 
-async function compressImage(file) {
+async function compressImage(file, quality = 0.8) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.src = URL.createObjectURL(file);
@@ -12,11 +12,17 @@ async function compressImage(file) {
       canvas.width = img.width;
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
-      canvas.toBlob(blob => {
+      canvas.toBlob(async (blob) => {
         if (!blob) return reject(new Error('Canvas to Blob failed'));
+
         const compressedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
-        resolve(compressedFile);
-      }, 'image/jpeg', 0.8);
+
+        if (compressedFile.size > MAX_SIZE_KB * 1024 && quality > 0.1) {
+          resolve(await compressImage(file, quality - 0.1));
+        } else {
+          resolve(compressedFile);
+        }
+      }, 'image/jpeg', quality);
     };
     img.onerror = reject;
   });
