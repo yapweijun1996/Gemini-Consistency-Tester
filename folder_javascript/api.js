@@ -8,7 +8,7 @@ async function extractText(res) {
          JSON.stringify(json);
 }
 
-export async function callGemini({ apiKey, model, prompt, imageParts, temperature, topK, timeoutMs, statusEl }) {
+export async function callGemini({ apiKey, model, prompt, imageParts, temperature, topP, timeoutMs, statusEl }) {
   const MAX_RETRIES = 3;
   const RETRY_DELAY_MS = 1000;
   let lastError = null;
@@ -26,7 +26,7 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
 
       const generationConfig = {
         temperature: temperature,
-        ...(topK > 0 && { topK: topK })
+        ...(topP > 0 && { topP: topP })
       };
 
       const body = { contents, generationConfig };

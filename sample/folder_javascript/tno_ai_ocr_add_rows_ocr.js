@@ -1145,7 +1145,7 @@
                 contents: [{
                     parts: [{ text: prompt }, part]
                 }],
-                generationConfig: { temperature: 0.1, topK: 1, topP: 0.1, response_mime_type: 'text/plain' }
+                generationConfig: { temperature: 0.1, topP: 0.1, response_mime_type: 'text/plain' }
             };
 
             let retries = 3;

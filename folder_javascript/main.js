@@ -65,7 +65,7 @@ async function runTest() {
         prompt,
         imageParts,
         temperature: parseFloat(elements.temperatureEl.value),
-        topK: parseInt(elements.topKEl.value, 10),
+        topP: parseFloat(elements.topPEl.value),
         timeoutMs: parseInt(elements.timeoutMsEl.value, 10) || 15000,
         statusEl: elements.statusText
       };
@@ -99,7 +99,7 @@ async function runTest() {
 function setupEventListeners() {
   elements.apiKeyEl.addEventListener('input', () => dbSet('gemini_api_key', elements.apiKeyEl.value).catch(console.error));
   elements.temperatureEl.addEventListener('input', () => elements.temperatureVal.textContent = parseFloat(elements.temperatureEl.value).toFixed(2));
-  elements.topKEl.addEventListener('input', () => elements.topKVal.textContent = elements.topKEl.value);
+  elements.topPEl.addEventListener('input', () => elements.topPVal.textContent = parseFloat(elements.topPEl.value).toFixed(2));
   elements.templateSelectorEl.addEventListener('change', () => {
     const idx = parseInt(elements.templateSelectorEl.value, 10);
     if (!isNaN(idx) && templates[idx]) {

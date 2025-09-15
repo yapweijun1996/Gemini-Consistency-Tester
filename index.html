@@ -110,9 +110,9 @@
             <div class="hint">Controls randomness. <span class="kbd">0.0</span> for deterministic, <span class="kbd">1.0</span> for creative.</div>
           </div>
           <div>
-            <label>Top-K: <span id="topKVal" class="mono">1</span></label>
-            <input id="topK" type="range" min="1" max="50" step="1" value="1" />
-            <div class="hint">Limits token selection. <span class="kbd">1</span> for most likely, higher for more diversity.</div>
+            <label>Top-P: <span id="topPVal" class="mono">0.90</span></label>
+            <input id="topP" type="range" min="0" max="1" step="0.01" value="0.9" />
+            <div class="hint">Limits token selection from a probability distribution. Higher values are more diverse.</div>
           </div>
         </div>
 
