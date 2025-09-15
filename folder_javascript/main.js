@@ -66,7 +66,7 @@ async function runTest() {
         imageParts,
         temperature: parseFloat(elements.temperatureEl.value),
         topP: parseFloat(elements.topPEl.value),
-        timeoutMs: parseInt(elements.timeoutMsEl.value, 10) || 15000,
+        timeoutMs: parseInt(elements.timeoutMsEl.value, 10) || 30000,
         statusEl: elements.statusText
       };
       const { text, latency } = await callGemini(params);
