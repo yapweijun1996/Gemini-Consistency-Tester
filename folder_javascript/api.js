@@ -24,13 +24,39 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
         parts: [{ text: prompt }, ...imageParts]
       }];
 
-      const generationConfig = {
-        temperature: 0.1,
-        topP: 0.95,
+      const config = {
+        temperature: temperature,
+        ...(topP > 0 && { topP: topP }),
         response_mime_type: 'text/plain'
       };
 
-      const body = { contents, generationConfig };
+      const body = {
+        contents,
+        "safetySettings": [
+          {
+            "category": "HARM_CATEGORY_HARASSMENT",
+            "threshold": "BLOCK_NONE"
+          },
+          {
+            "category": "HARM_CATEGORY_HATE_SPEECH",
+            "threshold": "BLOCK_NONE"
+          },
+          {
+            "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            "threshold": "BLOCK_NONE"
+          },
+          {
+            "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+            "threshold": "BLOCK_NONE"
+          }
+        ],
+        "generationConfig": {
+          ...config,
+          "thinkingConfig": {
+            "thinkingBudget": 0
+          }
+        }
+      };
 
       console.log('Request body:', JSON.stringify(body, null, 2));
 
