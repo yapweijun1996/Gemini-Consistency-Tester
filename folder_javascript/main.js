@@ -39,6 +39,9 @@ async function runTest() {
   elements.exportBtn.disabled = true;
   elements.statusText.textContent = 'Preparing images…';
 
+  const globalStartIso = new Date().toISOString();
+  const globalStartPerf = performance.now();
+
   let imageParts = [];
   try {
     imageParts = await filesToInlineParts(uploadedFiles);
@@ -55,7 +58,7 @@ async function runTest() {
 
   for (let i = 1; i <= N; i++) {
     if (cancelFlag) {
-      renderRow(i, '<span class="badge warn">cancelled</span>', null, '—');
+      renderRow(i, '<span class="badge warn">cancelled</span>', { latency: null, text: '—', attempts: [] });
       break;
     }
     try {
@@ -66,15 +69,24 @@ async function runTest() {
         imageParts,
         temperature: parseFloat(elements.temperatureEl.value),
         topP: parseFloat(elements.topPEl.value),
-        timeoutMs: parseInt(elements.timeoutMsEl.value, 10) || 15000,
+        thinkingBudget: Math.max(0, parseInt((elements.thinkingBudgetNumEl && elements.thinkingBudgetNumEl.value) || (elements.thinkingBudgetEl && elements.thinkingBudgetEl.value) || '0', 10) || 0),
+        timeoutMs: parseInt(elements.timeoutMsEl.value, 10) || 30000,
         statusEl: elements.statusText
       };
-      const { text, latency } = await callGemini(params);
-      lastResults.push({ index: i, ok: true, latency, text });
-      renderRow(i, '<span class="badge ok">ok</span>', latency, text);
+      const result = await callGemini(params);
+      const enrichedResult = { index: i, ok: true, ...result };
+      lastResults.push(enrichedResult);
+      renderRow(i, '<span class="badge ok">ok</span>', enrichedResult);
     } catch (err) {
-      lastResults.push({ index: i, ok: false, latency: null, error: String(err) });
-      renderRow(i, '<span class="badge err">error</span>', '–', String(err));
+      const errorResult = {
+        index: i,
+        ok: false,
+        latency: null,
+        error: String(err),
+        attempts: err.attempts || []
+      };
+      lastResults.push(errorResult);
+      renderRow(i, '<span class="badge err">error</span>', errorResult);
     }
     updateProgress(i, N);
     const delayMs = Math.max(0, parseInt(elements.delayMsEl.value, 10) || 0);
@@ -83,6 +95,7 @@ async function runTest() {
     }
   }
 
+  const totalMs = Math.round(performance.now() - globalStartPerf);
   const texts = lastResults.filter(r => r.ok).map(r => r.text);
   const { exactRate, avgJaccard, majorityNormalized } = computeMetrics(texts);
 
@@ -90,7 +103,7 @@ async function runTest() {
   elements.rateJaccard.textContent = texts.length ? (avgJaccard * 100).toFixed(1) + '%' : '–';
   elements.majorityText.textContent = texts.length ? majorityNormalized : '–';
 
-  elements.statusText.textContent = `Done. Success ${texts.length}/${lastResults.length}.`;
+  elements.statusText.textContent = `Done. ${lastResults.length} runs in ${totalMs}ms. Success ${texts.length}/${lastResults.length}.`;
   elements.runBtn.disabled = false;
   elements.cancelBtn.disabled = true;
   elements.exportBtn.disabled = lastResults.length > 0;
@@ -100,6 +113,19 @@ function setupEventListeners() {
   elements.apiKeyEl.addEventListener('input', () => dbSet('gemini_api_key', elements.apiKeyEl.value).catch(console.error));
   elements.temperatureEl.addEventListener('input', () => elements.temperatureVal.textContent = parseFloat(elements.temperatureEl.value).toFixed(2));
   elements.topPEl.addEventListener('input', () => elements.topPVal.textContent = parseFloat(elements.topPEl.value).toFixed(2));
+  // Sync thinking budget slider and number inputs
+  elements.thinkingBudgetEl?.addEventListener('input', () => {
+    elements.thinkingBudgetNumEl.value = elements.thinkingBudgetEl.value;
+  });
+  elements.thinkingBudgetNumEl?.addEventListener('input', () => {
+    const min = parseInt(elements.thinkingBudgetNumEl.min || '0', 10);
+    const max = parseInt(elements.thinkingBudgetNumEl.max || '4096', 10);
+    let v = parseInt(elements.thinkingBudgetNumEl.value || '0', 10);
+    if (Number.isNaN(v)) v = 0;
+    v = Math.min(Math.max(v, min), max);
+    elements.thinkingBudgetNumEl.value = String(v);
+    elements.thinkingBudgetEl.value = String(v);
+  });
   elements.templateSelectorEl.addEventListener('change', () => {
     const idx = parseInt(elements.templateSelectorEl.value, 10);
     if (!isNaN(idx) && templates[idx]) {
@@ -128,9 +154,26 @@ function setupEventListeners() {
     }
   });
   elements.resultsTableBody.addEventListener('click', (e) => {
-    if (e.target.classList.contains('output-link')) {
-      const fullText = decodeURIComponent(e.target.dataset.fullText);
+    const target = e.target;
+    if (target.classList.contains('output-link')) {
+      const fullText = decodeURIComponent(target.dataset.fullText);
       showModal(fullText, 'text');
+    } else if (target.classList.contains('details-btn')) {
+      const resultIndex = parseInt(target.dataset.resultIndex, 10);
+      const result = lastResults[resultIndex];
+      if (result) {
+        const content = `Run #${result.index}
+Status: ${result.ok ? 'OK' : 'Error'}
+Total Duration: ${result.latency ?? 'N/A'} ms
+Start Time: ${result.startTime ? new Date(result.startTime).toLocaleString() : 'N/A'}
+End Time: ${result.endTime ? new Date(result.endTime).toLocaleString() : 'N/A'}
+Error: ${result.error || 'None'}
+
+Attempts:
+${JSON.stringify(result.attempts, null, 2)}
+`;
+        showModal(content, 'text');
+      }
     }
   });
   elements.modalCloseBtn.addEventListener('click', hideModal);
@@ -144,11 +187,15 @@ function setupEventListeners() {
     elements.statusText.textContent = 'Cancelling…';
   });
   elements.exportBtn.addEventListener('click', () => {
+    const globalEndIso = new Date().toISOString();
     const out = {
       meta: {
         model: elements.modelEl.value,
         runs: parseInt(elements.runsEl.value, 10) || 0,
-        timestamp: new Date().toISOString()
+        timestamp: globalStartIso,
+        startTime: globalStartIso,
+        endTime: globalEndIso,
+        totalDurationMs: lastResults.reduce((sum, r) => sum + (r.latency || 0), 0)
       },
       prompt: elements.promptEl.value,
       results: lastResults

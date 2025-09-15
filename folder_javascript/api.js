@@ -8,14 +8,24 @@ async function extractText(res) {
          JSON.stringify(json);
 }
 
-export async function callGemini({ apiKey, model, prompt, imageParts, temperature, topP, timeoutMs, statusEl }) {
+export async function callGemini({ apiKey, model, prompt, imageParts, temperature, topP, thinkingBudget, timeoutMs, statusEl }) {
   const MAX_RETRIES = 3;
   const RETRY_DELAY_MS = 1000;
   let lastError = null;
+  const attempts = [];
 
   for (let i = 0; i < MAX_RETRIES; i++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    const attempt = {
+      attempt: i + 1,
+      start: new Date().toISOString(),
+      end: null,
+      durationMs: null,
+      httpStatus: null,
+      errorMessage: null,
+    };
 
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -33,32 +43,18 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
       const body = {
         contents,
         "safetySettings": [
-          {
-            "category": "HARM_CATEGORY_HARASSMENT",
-            "threshold": "BLOCK_NONE"
-          },
-          {
-            "category": "HARM_CATEGORY_HATE_SPEECH",
-            "threshold": "BLOCK_NONE"
-          },
-          {
-            "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            "threshold": "BLOCK_NONE"
-          },
-          {
-            "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-            "threshold": "BLOCK_NONE"
-          }
+          { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE" },
+          { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE" },
+          { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE" },
+          { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" }
         ],
         "generationConfig": {
           ...config,
           "thinkingConfig": {
-            "thinkingBudget": 0
+            "thinkingBudget": Math.max(0, Number.isFinite(+thinkingBudget) ? +thinkingBudget : 0)
           }
         }
       };
-
-      console.log('Request body:', JSON.stringify(body, null, 2));
 
       const t0 = performance.now();
       const res = await fetch(url, {
@@ -68,10 +64,21 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
         signal: controller.signal
       });
       const t1 = performance.now();
+      
       clearTimeout(timeoutId);
+      attempt.httpStatus = res.status;
+      attempt.end = new Date().toISOString();
+      attempt.durationMs = Math.round(t1 - t0);
 
       if (res.ok) {
-        return { text: await extractText(res), latency: Math.round(t1 - t0) };
+        attempts.push(attempt);
+        return {
+          text: await extractText(res),
+          latency: attempts.reduce((sum, a) => sum + a.durationMs, 0),
+          startTime: attempts[0].start,
+          endTime: attempts[attempts.length - 1].end,
+          attempts,
+        };
       }
 
       if (res.status === 503 || res.status === 429) {
@@ -84,6 +91,9 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
     } catch (err) {
       clearTimeout(timeoutId);
       lastError = err.name === 'AbortError' ? new Error(`Timeout`) : err;
+      attempt.end = new Date().toISOString();
+      attempt.errorMessage = lastError.message;
+      attempts.push(attempt);
 
       if (i < MAX_RETRIES - 1) {
         const originalStatus = statusEl.textContent;
@@ -93,5 +103,8 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
       }
     }
   }
-  throw lastError || new Error("Request failed after multiple retries.");
+  
+  const finalError = lastError || new Error("Request failed after multiple retries.");
+  finalError.attempts = attempts;
+  throw finalError;
 }

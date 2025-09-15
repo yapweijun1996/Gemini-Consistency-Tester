@@ -98,7 +98,7 @@
 
           <div>
             <label>Timeout (ms)</label>
-            <input id="timeoutMs" type="text" value="15000" />
+            <input id="timeoutMs" type="text" value="30000" />
           </div>
         </div>
 
@@ -113,6 +113,14 @@
             <label>Top-P: <span id="topPVal" class="mono">0.90</span></label>
             <input id="topP" type="range" min="0" max="1" step="0.01" value="0.9" />
             <div class="hint">Limits token selection from a probability distribution. Higher values are more diverse.</div>
+          </div>
+          <div>
+            <label>Thinking Budget</label>
+            <div class="row">
+              <input id="thinkingBudget" type="range" min="0" max="4096" step="1" value="512" />
+              <input id="thinkingBudgetNum" type="number" min="0" max="4096" step="1" value="512" style="max-width:120px;" />
+            </div>
+            <div class="hint">Controls internal reasoning token budget. Set <span class="kbd">0</span> to disable.</div>
           </div>
         </div>
 
@@ -176,8 +184,11 @@ Respond in a JSON object with one key: "capital".</textarea>
             <tr>
               <th>#</th>
               <th>Status</th>
-              <th>Latency (ms)</th>
+              <th>Start Time</th>
+              <th>Duration</th>
+              <th>Attempts</th>
               <th>Output (truncated)</th>
+              <th></th>
             </tr>
           </thead>
           <tbody></tbody>
