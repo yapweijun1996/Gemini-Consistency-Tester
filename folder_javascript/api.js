@@ -52,6 +52,9 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
         ],
         "generationConfig": {
           ...config,
+          "thinkingConfig": {
+            "thinkingBudget": 512
+          }
         }
       };
 
