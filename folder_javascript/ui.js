@@ -1,4 +1,4 @@
-import { formatBytes, truncate } from './utils.js';
+import { formatBytes, truncate, formatDuration, formatShortTime } from './utils.js';
 
 const el = id => document.getElementById(id);
 
@@ -34,13 +34,22 @@ export const elements = {
   imagePreviewContainer: el('imagePreviewContainer'),
 };
 
-export function renderRow(idx, status, latency, text) {
+export function renderRow(idx, status, result) {
   const tr = document.createElement('tr');
+  const text = result.text || result.error || '';
+  
   tr.innerHTML = `
     <td class="mono">${idx}</td>
     <td>${status}</td>
-    <td class="mono">${latency ?? '–'}</td>
-    <td class="mono"><span class="output-link" data-full-text="${encodeURIComponent(text || '')}">${truncate(text || '')}</span></td>
+    <td class="mono">${result.startTime ? formatShortTime(result.startTime) : '–'}</td>
+    <td class="mono">${result.latency != null ? formatDuration(result.latency) : '–'}</td>
+    <td class="mono">${result.attempts?.length || 0}</td>
+    <td class="mono">
+      <span class="output-link" data-full-text="${encodeURIComponent(text)}">${truncate(text)}</span>
+    </td>
+    <td>
+      <button class="btn ghost details-btn" data-result-index="${idx - 1}" style="padding: 4px 8px; font-size: 12px;">Details</button>
+    </td>
   `;
   elements.resultsTableBody.appendChild(tr);
   tr.scrollIntoView({ block: 'nearest' });
