@@ -25,8 +25,9 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
       }];
 
       const generationConfig = {
-        temperature: temperature,
-        ...(topP > 0 && { topP: topP })
+        temperature: 0.1,
+        topP: 0.95,
+        response_mime_type: 'text/plain'
       };
 
       const body = { contents, generationConfig };
