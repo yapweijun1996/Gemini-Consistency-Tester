@@ -114,6 +114,14 @@
             <input id="topP" type="range" min="0" max="1" step="0.01" value="0.9" />
             <div class="hint">Limits token selection from a probability distribution. Higher values are more diverse.</div>
           </div>
+          <div>
+            <label>Thinking Budget</label>
+            <div class="row">
+              <input id="thinkingBudget" type="range" min="0" max="4096" step="1" value="512" />
+              <input id="thinkingBudgetNum" type="number" min="0" max="4096" step="1" value="512" style="max-width:120px;" />
+            </div>
+            <div class="hint">Controls internal reasoning token budget. Set <span class="kbd">0</span> to disable.</div>
+          </div>
         </div>
 
         <h2 class="card-title" style="margin-top: 20px;">Task Definition</h2>

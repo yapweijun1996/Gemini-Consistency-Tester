@@ -66,6 +66,7 @@ async function runTest() {
         imageParts,
         temperature: parseFloat(elements.temperatureEl.value),
         topP: parseFloat(elements.topPEl.value),
+        thinkingBudget: Math.max(0, parseInt((elements.thinkingBudgetNumEl && elements.thinkingBudgetNumEl.value) || (elements.thinkingBudgetEl && elements.thinkingBudgetEl.value) || '0', 10) || 0),
         timeoutMs: parseInt(elements.timeoutMsEl.value, 10) || 30000,
         statusEl: elements.statusText
       };
@@ -100,6 +101,19 @@ function setupEventListeners() {
   elements.apiKeyEl.addEventListener('input', () => dbSet('gemini_api_key', elements.apiKeyEl.value).catch(console.error));
   elements.temperatureEl.addEventListener('input', () => elements.temperatureVal.textContent = parseFloat(elements.temperatureEl.value).toFixed(2));
   elements.topPEl.addEventListener('input', () => elements.topPVal.textContent = parseFloat(elements.topPEl.value).toFixed(2));
+  // Sync thinking budget slider and number inputs
+  elements.thinkingBudgetEl?.addEventListener('input', () => {
+    elements.thinkingBudgetNumEl.value = elements.thinkingBudgetEl.value;
+  });
+  elements.thinkingBudgetNumEl?.addEventListener('input', () => {
+    const min = parseInt(elements.thinkingBudgetNumEl.min || '0', 10);
+    const max = parseInt(elements.thinkingBudgetNumEl.max || '4096', 10);
+    let v = parseInt(elements.thinkingBudgetNumEl.value || '0', 10);
+    if (Number.isNaN(v)) v = 0;
+    v = Math.min(Math.max(v, min), max);
+    elements.thinkingBudgetNumEl.value = String(v);
+    elements.thinkingBudgetEl.value = String(v);
+  });
   elements.templateSelectorEl.addEventListener('change', () => {
     const idx = parseInt(elements.templateSelectorEl.value, 10);
     if (!isNaN(idx) && templates[idx]) {

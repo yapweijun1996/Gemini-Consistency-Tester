@@ -24,6 +24,9 @@ export const elements = {
   timeoutMsEl: el('timeoutMs'),
   temperatureVal: el('temperatureVal'),
   topPVal: el('topPVal'),
+  // New thinking budget controls
+  thinkingBudgetEl: el('thinkingBudget'),
+  thinkingBudgetNumEl: el('thinkingBudgetNum'),
   outputModalOverlay: el('outputModalOverlay'),
   modalContent: el('modalContent'),
   modalTitle: el('modalTitle'),

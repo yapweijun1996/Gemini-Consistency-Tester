@@ -8,7 +8,7 @@ async function extractText(res) {
          JSON.stringify(json);
 }
 
-export async function callGemini({ apiKey, model, prompt, imageParts, temperature, topP, timeoutMs, statusEl }) {
+export async function callGemini({ apiKey, model, prompt, imageParts, temperature, topP, thinkingBudget, timeoutMs, statusEl }) {
   const MAX_RETRIES = 3;
   const RETRY_DELAY_MS = 1000;
   let lastError = null;
@@ -53,7 +53,7 @@ export async function callGemini({ apiKey, model, prompt, imageParts, temperatur
         "generationConfig": {
           ...config,
           "thinkingConfig": {
-            "thinkingBudget": 512
+            "thinkingBudget": Math.max(0, Number.isFinite(+thinkingBudget) ? +thinkingBudget : 0)
           }
         }
       };
